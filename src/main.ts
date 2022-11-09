@@ -9,8 +9,12 @@ export interface Filter {
 
 export interface PluginMeta
   extends Meta<{
+    config: {
+      eventsToDrop?: string;
+    };
     global: {
       filters: Filter[];
+      eventsToDrop: string[];
     };
     attachments: {
       filters: PluginAttachment;
@@ -43,7 +47,7 @@ const operations: Record<
   },
 };
 
-export function setupPlugin({ global, attachments }: PluginMeta) {
+export function setupPlugin({ global, config, attachments }: PluginMeta) {
   if (!attachments.filters) throw new Error("No filters attachment found");
 
   try {
@@ -62,6 +66,9 @@ export function setupPlugin({ global, attachments }: PluginMeta) {
 
     // Save the filters to the global object
     global.filters = filters;
+
+    global.eventsToDrop =
+      config?.eventsToDrop?.split(",")?.map((event) => event.trim()) || [];
   } catch {
     throw new Error("Could not parse filters attachment");
   }
@@ -72,7 +79,12 @@ export function processEvent(
   meta: PluginMeta
 ): PluginEvent {
   if (!event.properties) return event;
-  const { filters } = meta.global;
+  const { filters, eventsToDrop } = meta.global;
+
+  // If the event name matches, we drop the event
+  if (eventsToDrop.some((e) => event.event === e)) {
+    return undefined;
+  }
 
   // Check if the event satisfies all the filters
   const keepEvent = filters.every((filter) => {
