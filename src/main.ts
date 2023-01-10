@@ -11,10 +11,12 @@ export interface PluginMeta
   extends Meta<{
     config: {
       eventsToDrop?: string;
+      keepUndefinedProperties?: 'Yes' | 'No'
     };
     global: {
       filters: Filter[];
       eventsToDrop: string[];
+      keepUndefinedProperties?: boolean
     };
     attachments: {
       filters: PluginAttachment;
@@ -69,6 +71,8 @@ export function setupPlugin({ global, config, attachments }: PluginMeta) {
 
     global.eventsToDrop =
       config?.eventsToDrop?.split(",")?.map((event) => event.trim()) || [];
+
+    global.keepUndefinedProperties = config.keepUndefinedProperties === 'Yes'
   } catch {
     throw new Error("Could not parse filters attachment");
   }
@@ -79,7 +83,7 @@ export function processEvent(
   meta: PluginMeta
 ): PluginEvent {
   if (!event.properties) return event;
-  const { filters, eventsToDrop } = meta.global;
+  const { filters, eventsToDrop, keepUndefinedProperties } = meta.global;
 
   // If the event name matches, we drop the event
   if (eventsToDrop.some((e) => event.event === e)) {
@@ -89,7 +93,7 @@ export function processEvent(
   // Check if the event satisfies all the filters
   const keepEvent = filters.every((filter) => {
     const value = event.properties[filter.property];
-    if (value === undefined) return false;
+    if (value === undefined) return keepUndefinedProperties;
 
     const operation = operations[filter.type][filter.operator];
     if (!operation) throw new Error(`Invalid operator ${filter.operator}`);

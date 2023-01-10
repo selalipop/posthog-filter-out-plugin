@@ -1,6 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { createEvent } from "@posthog/plugin-scaffold/test/utils";
-import { Filter, PluginMeta, processEvent } from "./main";
+import { Filter, PluginMeta, processEvent, setupPlugin } from "./main";
 
 const filters: Filter[] = [
   {
@@ -23,6 +23,10 @@ const filters: Filter[] = [
   },
 ];
 
+const meta = {
+  global: { filters, eventsToDrop: ['to_drop_event'] }
+} as PluginMeta
+
 test("Event satisfies all conditions and passes", () => {
   const event = createEvent({
     event: "test event",
@@ -32,9 +36,7 @@ test("Event satisfies all conditions and passes", () => {
       bar: true,
     },
   });
-  const processedEvent = processEvent(event, {
-    global: { filters },
-  } as PluginMeta);
+  const processedEvent = processEvent(event, meta);
   expect(processedEvent).toEqual(event);
 });
 
@@ -47,9 +49,7 @@ test("Event does not satisfy one condition and is dropped", () => {
       bar: true,
     },
   });
-  const processedEvent = processEvent(event, {
-    global: { filters },
-  } as PluginMeta);
+  const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
 });
 
@@ -62,8 +62,66 @@ test("Event does not satisfy any condition and is dropped", () => {
       bar: false,
     },
   });
-  const processedEvent = processEvent(event, {
-    global: { filters },
-  } as PluginMeta);
+  const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
 });
+
+test("Event is marked to be dropped is dropped", () => {
+  const event = createEvent({
+    event: "to_drop_event",
+    properties: {
+      $host: "example.com",
+      foo: 20,
+      bar: true,
+    },
+  });
+  const processedEvent = processEvent(event, meta);
+  expect(processedEvent).toBeUndefined();
+})
+
+test("Event is marked to be dropped when a property is undefined", () => {
+  const event = createEvent({
+    event: "test_event",
+    properties: {
+      $host: undefined,
+      foo: 20,
+      bar: true,
+    },
+  });
+  const processedEvent = processEvent(event, meta);
+  expect(processedEvent).toBeUndefined();
+})
+
+test("Event is marked to be dropped when a property is undefined but keepUndefinedProperties", () => {
+  const event = createEvent({
+    event: "test_event",
+    properties: {
+      $host: undefined,
+      foo: 20,
+      bar: true,
+    },
+  });
+  const processedEvent = processEvent(event, {
+    global: { ...meta.global, keepUndefinedProperties: true }
+  } as PluginMeta);
+  expect(processedEvent).toEqual(event);
+})
+
+function setup(config) {
+  const global: any = {}
+
+  setupPlugin({ config, global, attachments: { filters: { contents: JSON.stringify(filters) } } } as any)
+
+  return global
+}
+
+test("setupPlugin() parsing eventsToDrop", () => {
+  expect(setup({ eventsToDrop: 'foo, bar  '}).eventsToDrop).toEqual(['foo', 'bar'])
+  expect(setup({}).eventsToDrop).toEqual([])
+})
+
+test("setupPlugin() parsing keepUndefinedProperties", () => {
+  expect(setup({ keepUndefinedProperties: 'Yes'}).keepUndefinedProperties).toEqual(true)
+  expect(setup({ keepUndefinedProperties: 'No'}).keepUndefinedProperties).toEqual(false)
+  expect(setup({}).keepUndefinedProperties).toEqual(false)
+})
