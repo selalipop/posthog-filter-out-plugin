@@ -23,6 +23,10 @@ const filters: Filter[] = [
   },
 ];
 
+const meta = {
+  global: { filters, eventsToDrop: ['to_drop_event'] }
+} as PluginMeta
+
 test("Event satisfies all conditions and passes", () => {
   const event = createEvent({
     event: "test event",
@@ -32,9 +36,7 @@ test("Event satisfies all conditions and passes", () => {
       bar: true,
     },
   });
-  const processedEvent = processEvent(event, {
-    global: { filters },
-  } as PluginMeta);
+  const processedEvent = processEvent(event, meta);
   expect(processedEvent).toEqual(event);
 });
 
@@ -47,9 +49,7 @@ test("Event does not satisfy one condition and is dropped", () => {
       bar: true,
     },
   });
-  const processedEvent = processEvent(event, {
-    global: { filters },
-  } as PluginMeta);
+  const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
 });
 
@@ -62,8 +62,6 @@ test("Event does not satisfy any condition and is dropped", () => {
       bar: false,
     },
   });
-  const processedEvent = processEvent(event, {
-    global: { filters },
-  } as PluginMeta);
+  const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
 });
