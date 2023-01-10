@@ -65,3 +65,29 @@ test("Event does not satisfy any condition and is dropped", () => {
   const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
 });
+
+test("Event is marked to be dropped is dropped", () => {
+  const event = createEvent({
+    event: "to_drop_event",
+    properties: {
+      $host: "example.com",
+      foo: 20,
+      bar: true,
+    },
+  });
+  const processedEvent = processEvent(event, meta);
+  expect(processedEvent).toBeUndefined();
+})
+
+test("Event is marked to be dropped when a property is undefined", () => {
+  const event = createEvent({
+    event: "test_event",
+    properties: {
+      $host: undefined,
+      foo: 20,
+      bar: true,
+    },
+  });
+  const processedEvent = processEvent(event, meta);
+  expect(processedEvent).toBeUndefined();
+})
