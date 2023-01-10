@@ -20,6 +20,13 @@
       "type": "string",
       "hint": "A comma-separated list of event names to filter out (e.g. $pageview,$autocapture)",
       "required": false
+    },
+    {
+      "key": "keepUndefinedProperties",
+      "name": "Keep event if any of the filtered properties are undefined?",
+      "type": "choice",
+      "choices": ["Yes", "No"],
+      "default": "No"
     }
   ]
 }

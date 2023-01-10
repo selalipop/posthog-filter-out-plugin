@@ -1,6 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { createEvent } from "@posthog/plugin-scaffold/test/utils";
-import { Filter, PluginMeta, processEvent } from "./main";
+import { Filter, PluginMeta, processEvent, setupPlugin } from "./main";
 
 const filters: Filter[] = [
   {
@@ -90,4 +90,38 @@ test("Event is marked to be dropped when a property is undefined", () => {
   });
   const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
+})
+
+test("Event is marked to be dropped when a property is undefined but keepUndefinedProperties", () => {
+  const event = createEvent({
+    event: "test_event",
+    properties: {
+      $host: undefined,
+      foo: 20,
+      bar: true,
+    },
+  });
+  const processedEvent = processEvent(event, {
+    global: { ...meta.global, keepUndefinedProperties: true }
+  } as PluginMeta);
+  expect(processedEvent).toEqual(event);
+})
+
+function setup(config) {
+  const global: any = {}
+
+  setupPlugin({ config, global, attachments: { filters: { contents: JSON.stringify(filters) } } } as any)
+
+  return global
+}
+
+test("setupPlugin() parsing eventsToDrop", () => {
+  expect(setup({ eventsToDrop: 'foo, bar  '}).eventsToDrop).toEqual(['foo', 'bar'])
+  expect(setup({}).eventsToDrop).toEqual([])
+})
+
+test("setupPlugin() parsing keepUndefinedProperties", () => {
+  expect(setup({ keepUndefinedProperties: 'Yes'}).keepUndefinedProperties).toEqual(true)
+  expect(setup({ keepUndefinedProperties: 'No'}).keepUndefinedProperties).toEqual(false)
+  expect(setup({}).keepUndefinedProperties).toEqual(false)
 })
