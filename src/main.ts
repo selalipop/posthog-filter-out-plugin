@@ -11,15 +11,15 @@ export interface PluginMeta
   extends Meta<{
     config: {
       eventsToDrop?: string;
-      keepUndefinedProperties?: 'Yes' | 'No'
+      keepUndefinedProperties?: "Yes" | "No";
     };
     global: {
       filters: Filter[];
       eventsToDrop: string[];
-      keepUndefinedProperties?: boolean
+      keepUndefinedProperties?: boolean;
     };
     attachments: {
-      filters: PluginAttachment;
+      filters?: PluginAttachment;
     };
   }> {}
 
@@ -50,32 +50,32 @@ const operations: Record<
 };
 
 export function setupPlugin({ global, config, attachments }: PluginMeta) {
-  if (!attachments.filters) throw new Error("No filters attachment found");
+  if (attachments.filters) {
+    try {
+      // Parse the filters from the attachment
+      const filters = JSON.parse(attachments.filters.contents) as Filter[];
+      if (!filters) throw new Error("No filters found");
 
-  try {
-    // Parse the filters from the attachment
-    const filters = JSON.parse(attachments.filters.contents) as Filter[];
-    if (!filters) throw new Error("No filters found");
-
-    // Check if the filters are valid
-    for (const filter of filters) {
-      if (!operations[filter.type][filter.operator]) {
-        throw new Error(
-          `Invalid operator "${filter.operator}" for type "${filter.type}" in filter for "${filter.property}"`
-        );
+      // Check if the filters are valid
+      for (const filter of filters) {
+        if (!operations[filter.type][filter.operator]) {
+          throw new Error(
+            `Invalid operator "${filter.operator}" for type "${filter.type}" in filter for "${filter.property}"`
+          );
+        }
       }
+      // Save the filters to the global object
+      global.filters = filters;
+    } catch {
+      throw new Error("Could not parse filters attachment");
     }
-
-    // Save the filters to the global object
-    global.filters = filters;
-
-    global.eventsToDrop =
-      config?.eventsToDrop?.split(",")?.map((event) => event.trim()) || [];
-
-    global.keepUndefinedProperties = config.keepUndefinedProperties === 'Yes'
-  } catch {
-    throw new Error("Could not parse filters attachment");
+  } else {
+    global.filters = [];
   }
+  global.eventsToDrop =
+    config?.eventsToDrop?.split(",")?.map((event) => event.trim()) || [];
+
+  global.keepUndefinedProperties = config.keepUndefinedProperties === "Yes";
 }
 
 export function processEvent(
