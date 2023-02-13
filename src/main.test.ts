@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, test, describe } from "@jest/globals";
 import { createEvent } from "@posthog/plugin-scaffold/test/utils";
 import { Filter, PluginMeta, processEvent, setupPlugin } from "./main";
 
@@ -24,8 +24,8 @@ const filters: Filter[] = [
 ];
 
 const meta = {
-  global: { filters, eventsToDrop: ['to_drop_event'] }
-} as PluginMeta
+  global: { filters, eventsToDrop: ["to_drop_event"] },
+} as PluginMeta;
 
 test("Event satisfies all conditions and passes", () => {
   const event = createEvent({
@@ -77,7 +77,7 @@ test("Event is marked to be dropped is dropped", () => {
   });
   const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
-})
+});
 
 test("Event is marked to be dropped when a property is undefined", () => {
   const event = createEvent({
@@ -90,7 +90,7 @@ test("Event is marked to be dropped when a property is undefined", () => {
   });
   const processedEvent = processEvent(event, meta);
   expect(processedEvent).toBeUndefined();
-})
+});
 
 test("Event is marked to be dropped when a property is undefined but keepUndefinedProperties", () => {
   const event = createEvent({
@@ -102,26 +102,93 @@ test("Event is marked to be dropped when a property is undefined but keepUndefin
     },
   });
   const processedEvent = processEvent(event, {
-    global: { ...meta.global, keepUndefinedProperties: true }
+    global: { ...meta.global, keepUndefinedProperties: true },
   } as PluginMeta);
   expect(processedEvent).toEqual(event);
-})
+});
 
 function setup(config) {
-  const global: any = {}
+  const global: any = {};
 
-  setupPlugin({ config, global, attachments: { filters: { contents: JSON.stringify(filters) } } } as any)
+  setupPlugin({
+    config,
+    global,
+    attachments: { filters: { contents: JSON.stringify(filters) } },
+  } as any);
 
-  return global
+  return global;
 }
 
 test("setupPlugin() parsing eventsToDrop", () => {
-  expect(setup({ eventsToDrop: 'foo, bar  '}).eventsToDrop).toEqual(['foo', 'bar'])
-  expect(setup({}).eventsToDrop).toEqual([])
-})
+  expect(setup({ eventsToDrop: "foo, bar  " }).eventsToDrop).toEqual([
+    "foo",
+    "bar",
+  ]);
+  expect(setup({ eventsToDrop: "$foo,$bar" }).eventsToDrop).toEqual([
+    "$foo",
+    "$bar",
+  ]);
+  expect(setup({}).eventsToDrop).toEqual([]);
+});
 
 test("setupPlugin() parsing keepUndefinedProperties", () => {
-  expect(setup({ keepUndefinedProperties: 'Yes'}).keepUndefinedProperties).toEqual(true)
-  expect(setup({ keepUndefinedProperties: 'No'}).keepUndefinedProperties).toEqual(false)
-  expect(setup({}).keepUndefinedProperties).toEqual(false)
-})
+  expect(
+    setup({ keepUndefinedProperties: "Yes" }).keepUndefinedProperties
+  ).toEqual(true);
+  expect(
+    setup({ keepUndefinedProperties: "No" }).keepUndefinedProperties
+  ).toEqual(false);
+  expect(setup({}).keepUndefinedProperties).toEqual(false);
+});
+
+describe("empty filters", () => {
+  const meta_no_filters = {
+    global: { filters: [], eventsToDrop: ["to_drop_event"] },
+  } as PluginMeta;
+
+  test("Event satisfies all conditions and passes", () => {
+    const event = createEvent({
+      event: "test event",
+      properties: {
+        $host: "example.com",
+        foo: 20,
+        bar: true,
+      },
+    });
+    const processedEvent = processEvent(event, meta_no_filters);
+    expect(processedEvent).toEqual(event);
+  });
+
+  test("Event is marked to be dropped is dropped", () => {
+    const event = createEvent({
+      event: "to_drop_event",
+      properties: {
+        $host: "example.com",
+        foo: 20,
+        bar: true,
+      },
+    });
+    const processedEvent = processEvent(event, meta_no_filters);
+    expect(processedEvent).toBeUndefined();
+  });
+
+  test("setupPlugin() without any config works", () => {
+    const global: any = {};
+    setupPlugin({ config: {}, global, attachments: { filters: null } } as any);
+    expect(global.filters).toEqual([]);
+    expect(global.eventsToDrop).toEqual([]);
+    expect(global.keepUndefinedProperties).toEqual(false);
+  });
+
+  test("setupPlugin() with other config works", () => {
+    const global: any = {};
+    setupPlugin({
+      config: { eventsToDrop: "foo,bar", keepUndefinedProperties: "Yes" },
+      global,
+      attachments: { filters: null },
+    } as any);
+    expect(global.filters).toEqual([]);
+    expect(global.eventsToDrop).toEqual(["foo", "bar"]);
+    expect(global.keepUndefinedProperties).toEqual(true);
+  });
+});
