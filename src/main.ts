@@ -66,8 +66,8 @@ export function setupPlugin({ global, config, attachments }: PluginMeta) {
       }
       // Save the filters to the global object
       global.filters = filters;
-    } catch {
-      throw new Error("Could not parse filters attachment");
+    } catch (err) {
+      throw new Error("Could not parse filters attachment: " + err.message);
     }
   } else {
     global.filters = [];
